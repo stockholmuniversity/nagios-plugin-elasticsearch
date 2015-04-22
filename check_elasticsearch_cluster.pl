@@ -5,6 +5,7 @@ use JSON;
 use Nagios::Plugin;
 
 my $np = Nagios::Plugin->new(shortname => "#");
+my $code;
 
 # root@syslog-test-search01:~# curl 'http://localhost:9200/_cluster/health?level=shards&pretty'
 my %ES_STATUS = (
@@ -97,7 +98,7 @@ if ($@) {
 }
 
 # Check so that queue isn't over the limit
-my $code = $np->check_threshold(
+$code = $np->check_threshold(
   check => $ES_STATUS{$res->{status}},
   # FIXME When we have more than one node, use this line instead:
   # warning => "\@$ES_STATUS{'yellow'}",
@@ -106,7 +107,16 @@ my $code = $np->check_threshold(
 );
 $np->add_message($code, "Cluster $res->{cluster_name} has status $res->{status}");
 
+
 # "timed_out" : false,
+if (defined $res->{timed_out} && !$res->{timed_out}) {
+  $code = OK;
+}
+else {
+  $code = CRITICAL;
+}
+$np->add_message($code, $res->{timed_out} ? "Connection to cluster timed out!" : "");
+
 # "number_of_nodes" : 1,
 # Set final status and message
 ($code, my $message) = $np->check_messages();
