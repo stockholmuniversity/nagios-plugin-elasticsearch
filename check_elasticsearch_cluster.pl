@@ -107,15 +107,10 @@ $code = $np->check_threshold(
 );
 $np->add_message($code, "Cluster $res->{cluster_name} has status $res->{status}");
 
-
 # "timed_out" : false,
-if (defined $res->{timed_out} && !$res->{timed_out}) {
-  $code = OK;
+if (defined $res->{timed_out} && $res->{timed_out}) {
+  $np->add_message(CRITICAL, "Connection to cluster timed out!");
 }
-else {
-  $code = CRITICAL;
-}
-$np->add_message($code, $res->{timed_out} ? "Connection to cluster timed out!" : "");
 
 # "number_of_nodes" : 1,
 # Set final status and message
