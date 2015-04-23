@@ -97,7 +97,8 @@ if ($@) {
   $np->nagios_exit(CRITICAL, "JSON was invalid: $@");
 }
 
-# Check so that queue isn't over the limit
+# Check the cluster status
+# FIXME Gör till flagga!
 $code = $np->check_threshold(
   check => $ES_STATUS{$res->{status}},
   # FIXME When we have more than one node, use this line instead:
@@ -107,7 +108,7 @@ $code = $np->check_threshold(
 );
 $np->add_message($code, "Cluster $res->{cluster_name} has status $res->{status}");
 
-# "timed_out" : false,
+# Check that the cluster query didn't time out
 if (defined $res->{timed_out} && $res->{timed_out}) {
   $np->add_message(CRITICAL, "Connection to cluster timed out!");
 }
