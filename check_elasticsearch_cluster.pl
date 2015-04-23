@@ -113,7 +113,15 @@ if (defined $res->{timed_out} && $res->{timed_out}) {
   $np->add_message(CRITICAL, "Connection to cluster timed out!");
 }
 
-# "number_of_nodes" : 1,
-# Set final status and message
+# Check that we have the number of nodes we prefer online.
+# FIXME Gör till flagga!
+$code = $np->check_threshold(
+  check => $res->{number_of_nodes},
+  # FIXME When we have more than one node, change this
+  warning => "\@0",
+  critical => "\@0",
+);
+$np->add_message($code, "# of nodes: $res->{number_of_nodes}");
+
 ($code, my $message) = $np->check_messages();
 $np->nagios_exit($code, $message);
