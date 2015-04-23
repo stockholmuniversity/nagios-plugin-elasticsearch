@@ -14,6 +14,18 @@ my %ES_STATUS = (
   "green" => 3,
 );
 
+# FIXME Gör till flagga!
+sub check_status($) {
+  $code = $np->check_threshold(
+    check => $ES_STATUS{$_[0]->{status}},
+    # FIXME When we have more than one node, use this line instead:
+    # warning => "\@$ES_STATUS{'yellow'}",
+    warning => "\@$ES_STATUS{'red'}",
+    critical => "\@$ES_STATUS{'red'}",
+  );
+  $np->add_message($code, "Cluster $_[0]->{cluster_name} has status $_[0]->{status}");
+}
+
 my $json = <<'EOF';#{{{
 {
   "cluster_name" : "logstash",
@@ -98,15 +110,7 @@ if ($@) {
 }
 
 # Check the cluster status
-# FIXME Gör till flagga!
-$code = $np->check_threshold(
-  check => $ES_STATUS{$res->{status}},
-  # FIXME When we have more than one node, use this line instead:
-  # warning => "\@$ES_STATUS{'yellow'}",
-  warning => "\@$ES_STATUS{'red'}",
-  critical => "\@$ES_STATUS{'red'}",
-);
-$np->add_message($code, "Cluster $res->{cluster_name} has status $res->{status}");
+check_status($res);
 
 # Check that the cluster query didn't time out
 if (defined $res->{timed_out} && $res->{timed_out}) {
