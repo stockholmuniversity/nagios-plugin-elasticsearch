@@ -13,17 +13,18 @@ my %ES_STATUS = (
   "yellow" => 2,
   "green" => 3,
 );
+my $ES_STATUS_ERROR = "red";
 
 # FIXME Gör till flagga!
-sub check_status($) {
+sub check_status($$) {
   $code = $np->check_threshold(
     check => $ES_STATUS{$_[0]->{status}},
     # FIXME When we have more than one node, use this line instead:
     # warning => "\@$ES_STATUS{'yellow'}",
-    warning => "\@$ES_STATUS{'red'}",
-    critical => "\@$ES_STATUS{'red'}",
+    warning => "\@$ES_STATUS{$ES_STATUS_ERROR}",
+    critical => "\@$ES_STATUS{$ES_STATUS_ERROR}",
   );
-  $np->add_message($code, "Cluster $_[0]->{cluster_name} has status $_[0]->{status}");
+  $np->add_message($code, $_[1]);
 }
 
 my $json = <<'EOF';#{{{
@@ -110,7 +111,7 @@ if ($@) {
 }
 
 # Check the cluster status
-check_status($res);
+check_status($res, "Cluster $res->{cluster_name} has status $res->{status}");
 
 # Check that the cluster query didn't time out
 if (defined $res->{timed_out} && $res->{timed_out}) {
