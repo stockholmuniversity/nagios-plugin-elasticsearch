@@ -4,10 +4,12 @@ use warnings;
 use JSON;
 use Nagios::Plugin;
 use Data::Dumper;
+use LWP::UserAgent;
 
 my $np = Nagios::Plugin->new(
   shortname => "#",
-  usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]"
+  usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]",
+  timeout => 10,
 );
 
 $np->add_arg(
@@ -26,6 +28,18 @@ $np->add_arg(
 $np->getopts;
 
 my $code;
+my $json;
+my $ua = LWP::UserAgent->new;
+# NRPE timeout is 10 seconds, give us 1 second to run
+$ua->timeout($np->opts->timeout-1);
+# Time out 1 second before LWP times out.
+my $url = "http://localhost:9200/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
+my $resp = $ua->get($url);
+
+if (!$resp->is_success) {
+  $np->nagios_exit(CRITICAL, $resp->status_line);
+}
+$json = $resp->decoded_content;
 
 my %ES_STATUS = (
   "red" => 1,
@@ -62,80 +76,6 @@ sub check_status($$) {
   );
   $np->add_message($code, $_[1]);
 }
-
-my $json = <<'EOF';#{{{
-{
-  "cluster_name" : "logstash",
-  "status" : "yellow",
-  "timed_out" : false,
-  "number_of_nodes" : 1,
-  "number_of_data_nodes" : 1,
-  "active_primary_shards" : 136,
-  "active_shards" : 136,
-  "relocating_shards" : 0,
-  "initializing_shards" : 0,
-  "unassigned_shards" : 136,
-  "indices" : {
-    "logstash-2015.03.23" : {
-      "status" : "yellow",
-      "number_of_shards" : 5,
-      "number_of_replicas" : 1,
-      "active_primary_shards" : 5,
-      "active_shards" : 5,
-      "relocating_shards" : 0,
-      "initializing_shards" : 0,
-      "unassigned_shards" : 5,
-      "shards" : {
-        "1" : {
-          "status" : "yellow",
-          "primary_active" : true,
-          "active_shards" : 1,
-          "relocating_shards" : 0,
-          "initializing_shards" : 0,
-          "unassigned_shards" : 1
-        },
-        "2" : {
-          "status" : "yellow",
-          "primary_active" : true,
-          "active_shards" : 1,
-          "relocating_shards" : 0,
-          "initializing_shards" : 0,
-          "unassigned_shards" : 1
-        }
-      }
-    },
-    "logstash-2015.02.18" : {
-      "status" : "yellow",
-      "number_of_shards" : 5,
-      "number_of_replicas" : 1,
-      "active_primary_shards" : 5,
-      "active_shards" : 5,
-      "relocating_shards" : 0,
-      "initializing_shards" : 0,
-      "unassigned_shards" : 5,
-      "shards" : {
-        "0" : {
-          "status" : "yellow",
-          "primary_active" : true,
-          "active_shards" : 1,
-          "relocating_shards" : 0,
-          "initializing_shards" : 0,
-          "unassigned_shards" : 1
-        },
-        "4" : {
-          "status" : "yellow",
-          "primary_active" : true,
-          "active_shards" : 1,
-          "relocating_shards" : 0,
-          "initializing_shards" : 0,
-          "unassigned_shards" : 1
-        }
-      }
-    }
-  }
-}
-EOF
-#}}}
 
 my $res;
 # Try to parse the JSON
