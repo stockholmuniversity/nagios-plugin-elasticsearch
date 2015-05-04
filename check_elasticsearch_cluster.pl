@@ -6,6 +6,9 @@ use Nagios::Plugin;
 use Data::Dumper;
 use LWP::UserAgent;
 
+# TODO
+# * Add warnings
+# * Check that index/shard status is status or higher.
 my $np = Nagios::Plugin->new(
   shortname => "#",
   usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]",
