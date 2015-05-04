@@ -27,7 +27,6 @@ $np->getopts;
 
 my $code;
 
-# root@syslog-test-search01:~# curl 'http://localhost:9200/_cluster/health?level=shards&pretty'
 my %ES_STATUS = (
   "red" => 1,
   "yellow" => 2,
