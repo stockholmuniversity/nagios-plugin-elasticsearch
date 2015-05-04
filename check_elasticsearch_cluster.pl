@@ -16,6 +16,13 @@ $np->add_arg(
   default => "red",
 );
 
+$np->add_arg(
+  spec => 'nodes-critical=s',
+  help => "--nodes-critical\n   How many nodes which must be online, uses the Nagios threshhold format.
+   See <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT>. (default %s)",
+  default => '@0',
+);
+
 $np->getopts;
 
 my $code;
@@ -28,7 +35,7 @@ my %ES_STATUS = (
 );
 
 my $ES_STATUS_CRITICAL = $np->opts->critical;
-my $ES_NODES_ERROR = 0;
+my $ES_NODES_ERROR = $np->opts->get('nodes-critical');
 
 # Turns an array into "first, second & last"
 sub pretty_join($) {
@@ -149,12 +156,10 @@ if (defined $res->{timed_out} && $res->{timed_out}) {
 }
 
 # Check that we have the number of nodes we prefer online.
-# FIXME Gör till flagga!
 $code = $np->check_threshold(
   check => $res->{number_of_nodes},
-  # FIXME When we have more than one node, change this
-  warning => "\@$ES_NODES_ERROR",
-  critical => "\@$ES_NODES_ERROR",
+  warning => "$ES_NODES_ERROR",
+  critical => "$ES_NODES_ERROR",
 );
 $np->add_message($code, "nodes online: $res->{number_of_nodes}");
 
