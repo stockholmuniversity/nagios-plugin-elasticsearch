@@ -14,11 +14,30 @@ my %ES_STATUS = (
   "green" => 3,
 );
 my $ES_STATUS_ERROR = "red";
+my $ES_NODES_ERROR = 0;
+
+# Turns an array into "first, second & last"
+sub pretty_join($) {
+  my ($a) = @_;
+  join("", map {
+    if ($_ eq @$a[@$a-1]) {
+      $_;
+    }
+    else {
+      if ($_ eq @$a[@$a-2]) {
+        $_.' & ';
+      }
+      else {
+        $_.', ';
+      }
+    }
+  } @$a);
+}
 
 # FIXME Gör till flagga!
 sub check_status($$) {
   $code = $np->check_threshold(
-    check => $ES_STATUS{$_[0]->{status}},
+    check => (ref $_[0] eq "HASH") ? $ES_STATUS{$_[0]->{status}} : $ES_STATUS{$_[0]},
     # FIXME When we have more than one node, use this line instead:
     # warning => "\@$ES_STATUS{'yellow'}",
     warning => "\@$ES_STATUS{$ES_STATUS_ERROR}",
@@ -111,7 +130,7 @@ if ($@) {
 }
 
 # Check the cluster status
-check_status($res, "Cluster $res->{cluster_name} has status $res->{status}");
+check_status($res, "Cluster $res->{cluster_name} is $res->{status}");
 
 # Check that the cluster query didn't time out
 if (defined $res->{timed_out} && $res->{timed_out}) {
@@ -123,10 +142,33 @@ if (defined $res->{timed_out} && $res->{timed_out}) {
 $code = $np->check_threshold(
   check => $res->{number_of_nodes},
   # FIXME When we have more than one node, change this
-  warning => "\@0",
-  critical => "\@0",
+  warning => "\@$ES_NODES_ERROR",
+  critical => "\@$ES_NODES_ERROR",
 );
-$np->add_message($code, "# of nodes: $res->{number_of_nodes}");
+$np->add_message($code, "nodes online: $res->{number_of_nodes}");
 
-($code, my $message) = $np->check_messages();
+# Check all the indices and shards
+my $indices_with_issues;
+# Loop over all indexes and then shards to find which has ES_STATUS_ERROR
+# FIXME Make the check a >=yellow check
+foreach my $i (keys $res->{indices}) {
+  if ($res->{indices}->{$i}->{status} eq $ES_STATUS_ERROR) {
+    foreach my $s (keys $res->{indices}->{$i}->{shards}) {
+      if ($res->{indices}->{$i}->{shards}->{$s}->{status} eq $ES_STATUS_ERROR) {
+        push @{$indices_with_issues->{$i}}, $s;
+      }
+    }
+  }
+}
+
+# Create an joined error string for all indexes and shards
+if ($indices_with_issues) {
+  my @indices_error_string;
+  foreach my $i (keys $indices_with_issues) {
+    push @indices_error_string, "index $i shard(s) ".pretty_join($indices_with_issues->{$i});
+  }
+  check_status($ES_STATUS_ERROR, join(", ", @indices_error_string));
+}
+
+($code, my $message) = $np->check_messages(join => ", ");
 $np->nagios_exit($code, $message);
