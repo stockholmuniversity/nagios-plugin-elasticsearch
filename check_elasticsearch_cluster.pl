@@ -3,8 +3,21 @@ use strict;
 use warnings;
 use JSON;
 use Nagios::Plugin;
+use Data::Dumper;
 
-my $np = Nagios::Plugin->new(shortname => "#");
+my $np = Nagios::Plugin->new(
+  shortname => "#",
+  usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]"
+);
+
+$np->add_arg(
+  spec => 'critical=s',
+  help => "--critical\n   Which cluster/index/shard status that is critical. (default %s)",
+  default => "red",
+);
+
+$np->getopts;
+
 my $code;
 
 # root@syslog-test-search01:~# curl 'http://localhost:9200/_cluster/health?level=shards&pretty'
@@ -13,7 +26,8 @@ my %ES_STATUS = (
   "yellow" => 2,
   "green" => 3,
 );
-my $ES_STATUS_ERROR = "red";
+
+my $ES_STATUS_CRITICAL = $np->opts->critical;
 my $ES_NODES_ERROR = 0;
 
 # Turns an array into "first, second & last"
@@ -34,14 +48,11 @@ sub pretty_join($) {
   } @$a);
 }
 
-# FIXME Gör till flagga!
 sub check_status($$) {
   $code = $np->check_threshold(
     check => (ref $_[0] eq "HASH") ? $ES_STATUS{$_[0]->{status}} : $ES_STATUS{$_[0]},
-    # FIXME When we have more than one node, use this line instead:
-    # warning => "\@$ES_STATUS{'yellow'}",
-    warning => "\@$ES_STATUS{$ES_STATUS_ERROR}",
-    critical => "\@$ES_STATUS{$ES_STATUS_ERROR}",
+    warning => "\@$ES_STATUS{$ES_STATUS_CRITICAL}",
+    critical => "\@$ES_STATUS{$ES_STATUS_CRITICAL}",
   );
   $np->add_message($code, $_[1]);
 }
@@ -149,12 +160,12 @@ $np->add_message($code, "nodes online: $res->{number_of_nodes}");
 
 # Check all the indices and shards
 my $indices_with_issues;
-# Loop over all indexes and then shards to find which has ES_STATUS_ERROR
+# Loop over all indexes and then shards to find which has ES_STATUS_CRITICAL
 # FIXME Make the check a >=yellow check
 foreach my $i (keys $res->{indices}) {
-  if ($res->{indices}->{$i}->{status} eq $ES_STATUS_ERROR) {
+  if ($res->{indices}->{$i}->{status} eq $ES_STATUS_CRITICAL) {
     foreach my $s (keys $res->{indices}->{$i}->{shards}) {
-      if ($res->{indices}->{$i}->{shards}->{$s}->{status} eq $ES_STATUS_ERROR) {
+      if ($res->{indices}->{$i}->{shards}->{$s}->{status} eq $ES_STATUS_CRITICAL) {
         push @{$indices_with_issues->{$i}}, $s;
       }
     }
@@ -167,7 +178,7 @@ if ($indices_with_issues) {
   foreach my $i (keys $indices_with_issues) {
     push @indices_error_string, "index $i shard(s) ".pretty_join($indices_with_issues->{$i});
   }
-  check_status($ES_STATUS_ERROR, join(", ", @indices_error_string));
+  check_status($ES_STATUS_CRITICAL, join(", ", @indices_error_string));
 }
 
 ($code, my $message) = $np->check_messages(join => ", ");
