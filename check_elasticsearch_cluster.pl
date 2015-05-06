@@ -137,9 +137,9 @@ $np->add_message($code, "nodes online: $res->{number_of_nodes}");
 my $indices_with_issues;
 # Loop over all indexes and then shards to find which has ES_STATUS_CRITICAL
 # FIXME Make the check a >=yellow check
-foreach my $i (keys $res->{indices}) {
+foreach my $i (keys %{$res->{indices}}) {
   if ($res->{indices}->{$i}->{status} eq $ES_STATUS_CRITICAL) {
-    foreach my $s (keys $res->{indices}->{$i}->{shards}) {
+    foreach my $s (keys %{$res->{indices}->{$i}->{shards}}) {
       if ($res->{indices}->{$i}->{shards}->{$s}->{status} eq $ES_STATUS_CRITICAL) {
         push @{$indices_with_issues->{$i}}, $s;
       }
@@ -150,7 +150,7 @@ foreach my $i (keys $res->{indices}) {
 # Create an joined error string for all indexes and shards
 if ($indices_with_issues) {
   my @indices_error_string;
-  foreach my $i (keys $indices_with_issues) {
+  foreach my $i (keys %$indices_with_issues) {
     push @indices_error_string, "index $i shard(s) ".pretty_join($indices_with_issues->{$i});
   }
   check_status($ES_STATUS_CRITICAL, join(", ", @indices_error_string));
