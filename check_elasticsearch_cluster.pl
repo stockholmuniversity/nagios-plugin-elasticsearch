@@ -56,6 +56,12 @@ $np->add_arg(
   default => '@0',
 );
 
+$np->add_arg(
+  spec => 'url=s',
+  help => "--url\n   URL to your Elasticsearch instance. (default %s)",
+  default => 'http://localhost:9200',
+);
+
 $np->getopts;
 
 my $code;
@@ -64,7 +70,7 @@ my $ua = LWP::UserAgent->new;
 # NRPE timeout is 10 seconds, give us 1 second to run
 $ua->timeout($np->opts->timeout-1);
 # Time out 1 second before LWP times out.
-my $url = "http://localhost:9200/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
+my $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
 my $resp = $ua->get($url);
 
 if (!$resp->is_success) {
