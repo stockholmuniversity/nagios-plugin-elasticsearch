@@ -122,7 +122,7 @@ use LWP::UserAgent;
 
 my $np = Nagios::Plugin->new(
   shortname => "#",
-  usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]",
+  usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<value to emit critical>] [--warning=<value to emit warning>] --open-fds",
   timeout => 10,
   extra => "\nSee <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT> for information on how to use thresholds.",
 );
