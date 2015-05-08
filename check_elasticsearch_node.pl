@@ -137,17 +137,11 @@ $np->add_arg(
   help => "--open-fds\n   Check how many file descriptors are open.",
 );
 
-#FDs %
-#JVM %
-#TP INT
-#Breakers size %
-#Breakers tripped INT
-
 $np->add_arg(
   spec => 'warning|w=s',
   help => [
-    'Set the warning threshold in INTEGER',
-    'Set the warning threshold in PERCENT',
+    'Set the warning threshold in INTEGER (applies to breakers-tripped and thread-pool)',
+    'Set the warning threshold in PERCENT (applies to open-fds, jvm-heap-used, breakers-size)',
   ],
   label => [ 'INTEGER', 'PERCENT%' ],
 );
@@ -155,8 +149,8 @@ $np->add_arg(
 $np->add_arg(
   spec => 'critical|c=s',
   help => [
-    'Set the critical threshold in INTEGER',
-    'Set the critical threshold in PERCENT',
+    'Set the critical threshold in INTEGER (applies to breakers-tripped and thread-pool)',
+    'Set the critical threshold in PERCENT (applies to open-fds, jvm-heap-used, breakers-size)',
   ],
   label => [ 'INTEGER', 'PERCENT%' ],
 );
