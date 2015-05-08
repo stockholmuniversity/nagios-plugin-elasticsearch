@@ -163,32 +163,37 @@ $np->add_arg(
 
 $np->getopts;
 
+sub get_json($) {
+  my ($url) = @_;
+  my $ua = LWP::UserAgent->new;
+  # NRPE timeout is 10 seconds, give us 1 second to run
+  $ua->timeout($np->opts->timeout-1);
+  # Time out 1 second before LWP times out.
+  $url = $np->opts->url.$url;
+  my $response = $ua->get($url);
+
+  if (!$response->is_success) {
+    $np->nagios_exit(CRITICAL, $response->status_line);
+  }
+  my $json = $response->decoded_content;
+
+  my $result;
+  # Try to parse the JSON
+  eval {
+    $result = decode_json($json);
+  };
+  if ($@) {
+    $np->nagios_exit(CRITICAL, "JSON was invalid: $@");
+  }
+  return $result;
+}
+
 my $code;
-my $json;
-my $ua = LWP::UserAgent->new;
-# NRPE timeout is 10 seconds, give us 1 second to run
-$ua->timeout($np->opts->timeout-1);
-# Time out 1 second before LWP times out.
-my $url = $np->opts->url."/_nodes/_local/stats?pretty";
-my $resp = $ua->get($url);
-
-if (!$resp->is_success) {
-  $np->nagios_exit(CRITICAL, $resp->status_line);
-}
-$json = $resp->decoded_content;
-
-my $res;
-# Try to parse the JSON
-eval {
-  $res = decode_json($json);
-};
-if ($@) {
-  $np->nagios_exit(CRITICAL, "JSON was invalid: $@");
-}
+my $json = get_json("/_nodes/_local/stats?pretty");
 
 # Check number of open file descriptors
 if ($np->opts->get('open-fds')) {
-  my $open_fds = $res->{nodes}->{(keys $res->{nodes})[0]}->{process}->{open_file_descriptors};
+  my $open_fds = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{open_file_descriptors};
   # FIXME Check if it's an percentage and then get the maximum
   $code = $np->check_threshold(
     check => $open_fds,
