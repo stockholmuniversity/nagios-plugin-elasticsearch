@@ -35,11 +35,6 @@ use Data::Dumper;
 use LWP::UserAgent;
 
 # TODO FIXME
-# *
-#      "process" : {
-#        "timestamp" : 1430813501430,
-#        "open_file_descriptors" : 4167
-#      },
 
 # *
 #      "jvm" : {
