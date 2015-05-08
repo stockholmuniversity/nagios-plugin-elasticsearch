@@ -163,6 +163,11 @@ $np->add_arg(
 
 $np->getopts;
 
+sub convert_to_decimal($) {
+  $_[0] =~ s/[^\d]//g;
+  $_[0] = $_[0]/100;
+}
+
 sub get_json($) {
   my ($url) = @_;
   my $ua = LWP::UserAgent->new;
@@ -188,17 +193,27 @@ sub get_json($) {
   return $result;
 }
 
+my ($warning, $critical) = ($np->opts->warning, $np->opts->critical);
 my $code;
 my $json = get_json("/_nodes/_local/stats?pretty");
 
 # Check number of open file descriptors
 if ($np->opts->get('open-fds')) {
+  # Set defaults
+  $warning = $warning || "80%";
+  $critical = $critical || "90%";
+  convert_to_decimal($warning);
+  convert_to_decimal($critical);
+
   my $open_fds = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{open_file_descriptors};
-  # FIXME Check if it's an percentage and then get the maximum
+  # Get the default number of open file descriptors
+  $json = get_json("/_nodes/_local?pretty");
+  my $open_fds_max = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{max_file_descriptors};
+
   $code = $np->check_threshold(
     check => $open_fds,
-    warning => $np->opts->warning,
-    critical => $np->opts->critical,
+    warning => $open_fds_max*$warning,
+    critical => $open_fds_max*$critical,
   );
   $np->add_message($code, "Open file descriptors: $open_fds");
 }
