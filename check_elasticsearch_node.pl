@@ -203,7 +203,7 @@ if ($np->opts->get('open-fds')) {
   $np->add_message($code, "Open file descriptors: $open_fds");
 }
 else {
-  $np->nagios_exit(CRITICAL, "No check selected.");
+  exec ($0, "--help");
 }
 
 ($code, my $message) = $np->check_messages(join => ", ");
