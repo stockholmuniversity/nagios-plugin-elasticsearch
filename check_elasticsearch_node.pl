@@ -124,7 +124,12 @@ my $np = Nagios::Plugin->new(
   shortname => "#",
   usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<value to emit critical>] [--warning=<value to emit warning>] --open-fds",
   timeout => 10,
-  extra => "\nSee <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT> for information on how to use thresholds.",
+  extra => qq(
+See <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT> for
+information on how to use thresholds.
+The defaults has been been taken from
+<http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html>
+),
 );
 
 $np->add_arg(
