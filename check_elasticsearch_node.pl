@@ -37,44 +37,6 @@ use LWP::UserAgent;
 # TODO FIXME
 
 # *
-#      "jvm" : {
-#        "timestamp" : 1430813501432,
-#        "uptime_in_millis" : 84681165,
-#        "mem" : {
-#          "heap_used_in_bytes" : 17293203488,
-#          "heap_used_percent" : 50,
-#          "heap_committed_in_bytes" : 34290008064,
-#          "heap_max_in_bytes" : 34290008064,
-#          "non_heap_used_in_bytes" : 87888536,
-#          "non_heap_committed_in_bytes" : 88911872,
-#          "pools" : {
-#            "young" : {
-#              "used_in_bytes" : 39760320,
-#              "max_in_bytes" : 558432256,
-#              "peak_used_in_bytes" : 558432256,
-#              "peak_max_in_bytes" : 558432256
-#            },
-#            "survivor" : {
-#              "used_in_bytes" : 27668880,
-#              "max_in_bytes" : 69730304,
-#              "peak_used_in_bytes" : 69730304,
-#              "peak_max_in_bytes" : 69730304
-#            },
-#            "old" : {
-#              "used_in_bytes" : 17225774288,
-#              "max_in_bytes" : 33661845504,
-#              "peak_used_in_bytes" : 17573694632,
-#              "peak_max_in_bytes" : 33661845504
-#            }
-#          }
-#        },
-#
-#        The heap_used_percent metric is a useful number to keep an eye on. Elasticsearch is configured to initiate GCs when the heap reaches 75% full. If your node is consistently >= 75%, your node is experiencing memory pressure. This is a warning sign that slow GCs may be in your near future.
-#
-#        If the heap usage is consistently >=85%, you are in trouble. Heaps over 90–95% are in risk of horrible performance with long 10–30s GCs at best, and out-of-memory (OOM) exceptions at worst.
-#        http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html
-
-# *
 #      "thread_pool" : {
 #        "percolate" : {
 #          "threads" : 0,
@@ -133,6 +95,11 @@ $np->add_arg(
 );
 
 $np->add_arg(
+  spec => 'jvm-heap-usage',
+  help => "--jvm-heap-usage\n   Check how much JVM heap is used.",
+);
+
+$np->add_arg(
   spec => 'warning|w=s',
   help => [
     'Set the warning threshold in INTEGER (applies to breakers-tripped and thread-pool)',
@@ -158,8 +125,11 @@ $np->add_arg(
 
 $np->getopts;
 
-sub convert_to_decimal($) {
+# FIXME Handle Nagios thresholds, @ etc. Just remove %?
+sub clean_extra_chars($) {
   $_[0] =~ s/[^\d]//g;
+}
+sub convert_to_decimal($) {
   $_[0] = $_[0]/100;
 }
 
@@ -197,7 +167,9 @@ if ($np->opts->get('open-fds')) {
   # Set defaults
   $warning = $warning || "80%";
   $critical = $critical || "90%";
+  clean_extra_chars($warning);
   convert_to_decimal($warning);
+  clean_extra_chars($critical);
   convert_to_decimal($critical);
 
   my $open_fds = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{open_file_descriptors};
@@ -212,6 +184,32 @@ if ($np->opts->get('open-fds')) {
   );
   $np->add_message($code, "Open file descriptors: $open_fds");
 }
+
+# Check how much heap is used.
+elsif ($np->opts->get('jvm-heap-usage')) {
+  # Set defaults
+  # http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_jvm_section
+  # Elasticsearch is configured to initiate GCs when the heap reaches 75% full.
+  # If your node is consistently >= 75%, your node is experiencing memory
+  # pressure. This is a warning sign that slow GCs may be in your near future.
+  $warning = $warning || "75%";
+  # If the heap usage is consistently >=85%, you are in trouble. Heaps over
+  # 90–95% are in risk of horrible performance with long 10–30s GCs at best,
+  # and out-of-memory (OOM) exceptions at worst.
+  $critical = $critical || "85%";
+  clean_extra_chars($warning);
+  clean_extra_chars($critical);
+
+  my $jvm_heap_used = $json->{nodes}->{(keys $json->{nodes})[0]}->{jvm}->{mem}->{heap_used_percent};
+
+  $code = $np->check_threshold(
+    check => $jvm_heap_used,
+    warning => $warning,
+    critical => $critical,
+  );
+  $np->add_message($code, "JVM heap in use: $jvm_heap_used%");
+}
+
 else {
   exec ($0, "--help");
 }
