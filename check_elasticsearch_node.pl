@@ -191,8 +191,7 @@ sub check_each($$$$$) {
   for my $code (keys %statuses) {
     # We don't care about OK checks, but add messages about everything else.
     if ($code ne 0 && $statuses{$code}) {
-      # FIXME Use pretty_join
-      $np->add_message($code, $message.join(", ", @{$statuses{$code}}));
+      $np->add_message($code, $message.pretty_join($statuses{$code}));
     }
   }
 }
