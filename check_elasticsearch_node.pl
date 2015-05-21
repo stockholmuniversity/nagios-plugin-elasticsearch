@@ -37,18 +37,6 @@ use LWP::UserAgent;
 # TODO FIXME
 
 # *
-#      "thread_pool" : {
-#        "percolate" : {
-#          "threads" : 0,
-#          "queue" : 0,
-#          "active" : 0,
-#          "rejected" : 0,
-#          "largest" : 0,
-#          "completed" : 0
-#        },
-#        If the queue fills up to its limit, new work units will begin to be rejected, and you will see that reflected in the rejected statistic. This is often a sign that your cluster is starting to bottleneck on some resources, since a full queue means your node/cluster is processing at maximum speed but unable to keep up with the influx of work.
-
-# *
 #      "breakers" : {
 #        "request" : {
 #          "limit_size_in_bytes" : 13716003225,
@@ -97,6 +85,11 @@ $np->add_arg(
 $np->add_arg(
   spec => 'jvm-heap-usage',
   help => "--jvm-heap-usage\n   Check how much JVM heap is used.",
+);
+
+$np->add_arg(
+  spec => 'thread-pool',
+  help => "--thread-pool\n   Check if the thread pools have any rejected work units.",
 );
 
 $np->add_arg(
@@ -236,6 +229,29 @@ elsif ($np->opts->get('jvm-heap-usage')) {
     critical => $critical,
   );
   $np->add_message($code, "JVM heap in use: $jvm_heap_used%");
+}
+
+# Check if the thread pools have any rejected work units.
+elsif ($np->opts->get('thread-pool')) {
+  # Set defaults
+  # http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_threadpool_section
+  # If the queue fills up to its limit, new work units will begin to be
+  # rejected[…]. This is often a sign that your cluster is starting to
+  # bottleneck on some resources, since a full queue means your node/cluster is
+  # processing at maximum speed but unable to keep up with the influx of work.
+  $warning = $warning || '@1:';
+  $critical = $critical || '@5:';
+
+  my $thread_pool = $json->{nodes}->{(keys $json->{nodes})[0]}->{thread_pool};
+
+  check_each($thread_pool, sub {
+      my ($f) = @_;
+      return $f->{rejected};
+    },
+    $warning,
+    $critical,
+    "Thread pools with rejected threads: "
+  );
 }
 
 else {
