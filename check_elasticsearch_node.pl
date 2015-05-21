@@ -87,15 +87,16 @@ $np->add_arg(
   help => "--jvm-heap-usage\n   Check how much JVM heap is used.",
 );
 
+# TODO Add thread-pool-queued (%)
 $np->add_arg(
-  spec => 'thread-pool',
-  help => "--thread-pool\n   Check if the thread pools have any rejected work units.",
+  spec => 'thread-pool-rejected',
+  help => "--thread-pool-rejected\n   Check if the thread pools have any rejected work units.",
 );
 
 $np->add_arg(
   spec => 'warning|w=s',
   help => [
-    'Set the warning threshold in INTEGER (applies to breakers-tripped and thread-pool)',
+    'Set the warning threshold in INTEGER (applies to breakers-tripped and thread-pool-rejected)',
     'Set the warning threshold in PERCENT (applies to open-fds, jvm-heap-used, breakers-size)',
   ],
   label => [ 'INTEGER', 'PERCENT%' ],
@@ -104,7 +105,7 @@ $np->add_arg(
 $np->add_arg(
   spec => 'critical|c=s',
   help => [
-    'Set the critical threshold in INTEGER (applies to breakers-tripped and thread-pool)',
+    'Set the critical threshold in INTEGER (applies to breakers-tripped and thread-pool-rejected)',
     'Set the critical threshold in PERCENT (applies to open-fds, jvm-heap-used, breakers-size)',
   ],
   label => [ 'INTEGER', 'PERCENT%' ],
@@ -249,7 +250,7 @@ elsif ($np->opts->get('jvm-heap-usage')) {
 }
 
 # Check if the thread pools have any rejected work units.
-elsif ($np->opts->get('thread-pool')) {
+elsif ($np->opts->get('thread-pool-rejected')) {
   # Set defaults
   # http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_threadpool_section
   # If the queue fills up to its limit, new work units will begin to be
