@@ -34,36 +34,6 @@ use Nagios::Plugin;
 use Data::Dumper;
 use LWP::UserAgent;
 
-# TODO FIXME
-
-# *
-#      "breakers" : {
-#        "request" : {
-#          "limit_size_in_bytes" : 13716003225,
-#          "limit_size" : "12.7gb",
-#          "estimated_size_in_bytes" : 0,
-#          "estimated_size" : "0b",
-#          "overhead" : 1.0,
-#          "tripped" : 0
-#        },
-#        "fielddata" : {
-#          "limit_size_in_bytes" : 20574004838,
-#          "limit_size" : "19.1gb",
-#          "estimated_size_in_bytes" : 1922942256,
-#          "estimated_size" : "1.7gb",
-#          "overhead" : 1.03,
-#          "tripped" : 0
-#        },
-#        "parent" : {
-#          "limit_size_in_bytes" : 24003005644,
-#          "limit_size" : "22.3gb",
-#          "estimated_size_in_bytes" : 1922942256,
-#          "estimated_size" : "1.7gb",
-#          "overhead" : 1.0,
-#          "tripped" : 0
-#        }
-#      }
-# The main thing to watch is the tripped metric. If this number is large or consistently increasing, it’s a sign that your queries may need to be optimized or that you may need to obtain more memory (either per box or by adding more nodes).
 
 my $np = Nagios::Plugin->new(
   shortname => "#",
@@ -91,6 +61,11 @@ $np->add_arg(
 $np->add_arg(
   spec => 'thread-pool-rejected',
   help => "--thread-pool-rejected\n   Check how many rejected work units the thread pools have.",
+);
+
+$np->add_arg(
+  spec => 'breakers-tripped',
+  help => "--breakers-tripped\n   Check how many circuit breakers that have been tripped.",
 );
 
 $np->add_arg(
@@ -269,6 +244,29 @@ elsif ($np->opts->get('thread-pool-rejected')) {
     $warning,
     $critical,
     "Thread pools with rejected threads: "
+  );
+}
+
+# Check how many circuit breakers that have been tripped.
+elsif ($np->opts->get('breakers-tripped')) {
+  # Set defaults
+  # https://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_circuit_breaker
+  # The main thing to watch is the tripped metric. If this number is large or
+  # consistently increasing, it’s a sign that your queries may need to be
+  # optimized or that you may need to obtain more memory (either per box or by
+  # adding more nodes).
+  $warning = $warning || '@1:';
+  $critical = $critical || '@5:';
+
+  my $breakers = $json->{nodes}->{(keys $json->{nodes})[0]}->{breakers};
+
+  check_each($breakers, sub {
+      my ($f) = @_;
+      return $f->{tripped};
+    },
+    $warning,
+    $critical,
+    "Breakers tripped: "
   );
 }
 
