@@ -90,7 +90,7 @@ $np->add_arg(
 # TODO Add thread-pool-queued (%)
 $np->add_arg(
   spec => 'thread-pool-rejected',
-  help => "--thread-pool-rejected\n   Check if the thread pools have any rejected work units.",
+  help => "--thread-pool-rejected\n   Check how many rejected work units the thread pools have.",
 );
 
 $np->add_arg(
@@ -249,7 +249,7 @@ elsif ($np->opts->get('jvm-heap-usage')) {
   $np->add_message($code, "JVM heap in use: $jvm_heap_used%");
 }
 
-# Check if the thread pools have any rejected work units.
+# Check how many rejected work units the thread pools have.
 elsif ($np->opts->get('thread-pool-rejected')) {
   # Set defaults
   # http://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_threadpool_section
