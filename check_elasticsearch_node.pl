@@ -151,6 +151,24 @@ sub get_json($) {
   return $result;
 }
 
+# Turns an array into "first, second & last"
+sub pretty_join($) {
+  my ($a) = @_;
+  join("", map {
+    if ($_ eq @$a[@$a-1]) {
+      $_;
+    }
+    else {
+      if ($_ eq @$a[@$a-2]) {
+        $_.' & ';
+      }
+      else {
+        $_.', ';
+      }
+    }
+  } @$a);
+}
+
 # Check a data structure with check_threshold.
 # TODO Make sure it works recursively
 sub check_each($$$$$) {
