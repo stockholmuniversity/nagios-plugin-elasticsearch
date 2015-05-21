@@ -158,6 +158,34 @@ sub get_json($) {
   return $result;
 }
 
+# Check a data structure with check_threshold.
+# TODO Make sure it works recursively
+sub check_each($$$$$) {
+  my %statuses;
+  my ($what, $where, $warning, $critical, $message) = @_;
+  # Run check_threshold on everything
+  foreach my $k (keys $what) {
+    my $current_key = $where->($what->{$k});
+
+    my $code = $np->check_threshold(
+      check => $current_key,
+      warning => $warning,
+      critical => $critical,
+    );
+
+    # and put in in a hash where the status is the key and the value an array
+    # of the keys with that status
+    push @{$statuses{$code}}, $k;
+  }
+  for my $code (keys %statuses) {
+    # We don't care about OK checks, but add messages about everything else.
+    if ($code ne 0 && $statuses{$code}) {
+      # FIXME Use pretty_join
+      $np->add_message($code, $message.join(", ", @{$statuses{$code}}));
+    }
+  }
+}
+
 my ($warning, $critical) = ($np->opts->warning, $np->opts->critical);
 my $code;
 my $json = get_json("/_nodes/_local/stats?pretty");
