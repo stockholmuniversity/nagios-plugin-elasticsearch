@@ -107,6 +107,18 @@ sub convert_to_decimal($) {
   return $ret;
 }
 
+sub remove_unit($) {
+  my ($ret) = @_;
+  $ret =~ s/[gm]?b$//;
+  return $ret;
+}
+
+sub to_threshold($$) {
+  my ($ret, $original) = @_;
+  $ret =~ s/\d+%?/$original/;
+  return $ret;
+}
+
 sub get_json($) {
   my ($url) = @_;
   my $ua = LWP::UserAgent->new;
