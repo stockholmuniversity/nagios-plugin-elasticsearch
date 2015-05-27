@@ -34,7 +34,6 @@ use Nagios::Plugin;
 use Data::Dumper;
 use LWP::UserAgent;
 
-
 my $np = Nagios::Plugin->new(
   shortname => "#",
   usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<value to emit critical>] [--warning=<value to emit warning>] --open-fds",
