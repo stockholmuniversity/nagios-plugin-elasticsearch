@@ -69,6 +69,11 @@ $np->add_arg(
 );
 
 $np->add_arg(
+  spec => 'breakers-size',
+  help => "--breakers-size\n   Check how near we are the circuit breaker size limit.",
+);
+
+$np->add_arg(
   spec => 'warning|w=s',
   help => [
     'Set the warning threshold in INTEGER (applies to breakers-tripped and thread-pool-rejected)',
@@ -290,6 +295,40 @@ elsif ($np->opts->get('breakers-tripped')) {
     $warning,
     $critical,
     "Breakers tripped: "
+  );
+}
+
+# Check how near we are the circuit breaker size limit.
+elsif ($np->opts->get('breakers-size')) {
+  # Set defaults
+  # https://www.elastic.co/guide/en/elasticsearch/guide/current/_monitoring_individual_nodes.html#_circuit_breaker
+  # Determine the maximum circuit-breaker size (for example, at what size the
+  # circuit breaker will trip if a query attempts to use more memory).
+  # Numbers here are made up my me, they should me sound.
+  $warning = $warning || '@75%:';
+  $critical = $critical || '@85%:';
+
+  my $breakers = $json->{nodes}->{(keys $json->{nodes})[0]}->{breakers};
+
+  check_each($breakers, sub {
+      my ($f) = @_;
+      my $estimated_size = $f->{estimated_size};
+      $estimated_size = remove_unit($estimated_size);
+      return $estimated_size;
+    },
+    sub {
+      my ($f) = @_;
+      my $limit_size = $f->{limit_size};
+      $limit_size = remove_unit($limit_size);
+      return to_threshold($warning, ($limit_size*convert_to_decimal(clean_extra_chars($warning))));
+    },
+    sub {
+      my ($f) = @_;
+      my $limit_size = $f->{limit_size};
+      $limit_size = remove_unit($limit_size);
+      return to_threshold($critical, ($limit_size*convert_to_decimal(clean_extra_chars($critical))));
+    },
+    "Breakers over memory limit: "
   );
 }
 
