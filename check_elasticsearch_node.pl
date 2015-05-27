@@ -99,7 +99,6 @@ $np->add_arg(
 
 $np->getopts;
 
-# FIXME Handle Nagios thresholds, @ etc. Just remove %?
 sub clean_extra_chars($) {
   my ($ret) = @_;
   $ret =~ s/[^\d]//g;
