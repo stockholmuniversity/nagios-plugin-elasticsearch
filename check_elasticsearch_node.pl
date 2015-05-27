@@ -127,7 +127,6 @@ sub get_json($) {
   my $ua = LWP::UserAgent->new;
   # NRPE timeout is 10 seconds, give us 1 second to run
   $ua->timeout($np->opts->timeout-1);
-  # Time out 1 second before LWP times out.
   $url = $np->opts->url.$url;
   my $response = $ua->get($url);
 
