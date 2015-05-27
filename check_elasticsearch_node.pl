@@ -96,10 +96,15 @@ $np->getopts;
 
 # FIXME Handle Nagios thresholds, @ etc. Just remove %?
 sub clean_extra_chars($) {
-  $_[0] =~ s/[^\d]//g;
+  my ($ret) = @_;
+  $ret =~ s/[^\d]//g;
+  return $ret;
 }
+
 sub convert_to_decimal($) {
-  $_[0] = $_[0]/100;
+  my ($ret) = @_;
+  $ret = $_[0]/100;
+  return $ret;
 }
 
 sub get_json($) {
@@ -181,10 +186,10 @@ if ($np->opts->get('open-fds')) {
   # Set defaults
   $warning = $warning || "80%";
   $critical = $critical || "90%";
-  clean_extra_chars($warning);
-  convert_to_decimal($warning);
-  clean_extra_chars($critical);
-  convert_to_decimal($critical);
+  $warning = clean_extra_chars($warning);
+  $warning = convert_to_decimal($warning);
+  $critical = clean_extra_chars($critical);
+  $critical = convert_to_decimal($critical);
 
   my $open_fds = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{open_file_descriptors};
   # Get the default number of open file descriptors
@@ -211,8 +216,8 @@ elsif ($np->opts->get('jvm-heap-usage')) {
   # 90–95% are in risk of horrible performance with long 10–30s GCs at best,
   # and out-of-memory (OOM) exceptions at worst.
   $critical = $critical || "85%";
-  clean_extra_chars($warning);
-  clean_extra_chars($critical);
+  $warning = clean_extra_chars($warning);
+  $critical = clean_extra_chars($critical);
 
   my $jvm_heap_used = $json->{nodes}->{(keys $json->{nodes})[0]}->{jvm}->{mem}->{heap_used_percent};
 
