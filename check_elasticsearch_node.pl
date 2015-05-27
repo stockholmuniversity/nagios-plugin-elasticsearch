@@ -170,6 +170,12 @@ sub check_each($$$$$) {
   # Run check_threshold on everything
   foreach my $k (keys $what) {
     my $current_key = $where->($what->{$k});
+    if (ref $warning eq "CODE") {
+      $warning = $warning->($what->{$k});
+    }
+    if (ref $critical eq "CODE") {
+      $critical = $critical->($what->{$k});
+    }
 
     my $code = $np->check_threshold(
       check => $current_key,
