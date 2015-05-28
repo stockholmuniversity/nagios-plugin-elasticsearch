@@ -130,6 +130,39 @@ sub check_status($$) {
   $np->add_message($code, $_[1]);
 }
 
+# Check a data structure with check_threshold.
+# TODO Make sure it works recursively
+sub check_each($$$$$) {
+  my %statuses;
+  my ($what, $where, $warning, $critical, $message) = @_;
+  # Run check_threshold on everything
+  foreach my $k (keys $what) {
+    my $current_key = $where->($what->{$k});
+    if (ref $warning eq "CODE") {
+      $warning = $warning->($what->{$k});
+    }
+    if (ref $critical eq "CODE") {
+      $critical = $critical->($what->{$k});
+    }
+
+    my $code = $np->check_threshold(
+      check => $current_key,
+      warning => $warning,
+      critical => $critical,
+    );
+
+    # and put in in a hash where the status is the key and the value an array
+    # of the keys with that status
+    push @{$statuses{$code}}, $k;
+  }
+  for my $code (keys %statuses) {
+    # We don't care about OK checks, but add messages about everything else.
+    if ($code ne 0 && $statuses{$code}) {
+      $np->add_message($code, $message.pretty_join($statuses{$code}));
+    }
+  }
+}
+
 my $ua = LWP::UserAgent->new;
 # NRPE timeout is 10 seconds, give us 1 second to run
 $ua->timeout($np->opts->timeout-1);
