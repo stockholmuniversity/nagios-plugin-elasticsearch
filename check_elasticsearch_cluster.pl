@@ -243,5 +243,5 @@ else {
   exec ($0, "--help");
 }
 
-($code, my $message) = $np->check_messages(join => ", ");
+($code, my $message) = $np->check_messages();
 $np->nagios_exit($code, $message);
