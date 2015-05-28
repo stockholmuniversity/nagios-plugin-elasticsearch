@@ -73,6 +73,11 @@ $np->add_arg(
 );
 
 $np->add_arg(
+  spec => 'nodes-online',
+  help => "--nodes-online\n   Check the number of nodes online.",
+);
+
+$np->add_arg(
   spec => 'warning|w=s',
   help => [
     'Set the warning threshold in INTEGER (applies to nodes-online)',
@@ -220,17 +225,23 @@ elsif ($np->opts->get('index-status')) {
   );
 }
 
+# Check that we have the number of nodes we prefer online.
+elsif ($np->opts->get('nodes-online')) {
+  # Set defaults
+  $warning = $warning || '3:';
+  $critical = $critical || "2:";
+
+  $code = $np->check_threshold(
+    check => $json->{number_of_nodes},
+    warning => $warning,
+    critical => $critical,
+  );
+  $np->add_message($code, "Nodes online: $json->{number_of_nodes}");
+}
+
 else {
   exec ($0, "--help");
 }
-
-# Check that we have the number of nodes we prefer online.
-$code = $np->check_threshold(
-  check => $json->{number_of_nodes},
-  warning => $warning,
-  critical => $critical,
-);
-$np->add_message($code, "nodes online: $json->{number_of_nodes}");
 
 ($code, my $message) = $np->check_messages(join => ", ");
 $np->nagios_exit($code, $message);
