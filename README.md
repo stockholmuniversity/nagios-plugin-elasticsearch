@@ -4,9 +4,11 @@ Nagios NRPE and "regular" checks for checking an Elasticsearch cluster and node 
 
 ## Dependencies
 
-* `JSON` which is in package `libjson-perl` on Ubuntu/Debian.
-* `Nagios::Plugin` which is in package `libnagios-plugin-perl` on Ubuntu/Debian.
-* `LWP::UserAgent` which is in package `libwww-perl` on Ubuntu/Debian.
+| CPAN module      | Debian/Ubuntu package   |
+|------------------|-------------------------|
+| `JSON`           | `libjson-perl`          |
+| `Nagios::Plugin` | `libnagios-plugin-perl` |
+| `LWP::UserAgent` | `libwww-perl`           |
 
 ## Checks supported
 
