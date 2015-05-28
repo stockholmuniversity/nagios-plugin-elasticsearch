@@ -68,6 +68,11 @@ $np->add_arg(
 );
 
 $np->add_arg(
+  spec => 'index-status',
+  help => "--index-status\n   Check the status of the indexes.",
+);
+
+$np->add_arg(
   spec => 'warning|w=s',
   help => [
     'Set the warning threshold in INTEGER (applies to nodes-online)',
@@ -198,6 +203,23 @@ if ($np->opts->get('cluster-status')) {
   check_status($json, "Cluster $json->{cluster_name} is $json->{status}");
 }
 
+# Check the status of the cluster.
+elsif ($np->opts->get('index-status')) {
+  # Set defaults
+  $warning = $warning || "yellow";
+  $critical = $critical || "red";
+
+  check_each($json->{indices},
+    sub {
+      my ($f) = @_;
+      return $ES_STATUS{$f->{status}};
+    },
+    $ES_STATUS{$warning},
+    $ES_STATUS{$critical},
+    "Indexes with issues: "
+  );
+}
+
 else {
   exec ($0, "--help");
 }
@@ -209,29 +231,6 @@ $code = $np->check_threshold(
   critical => $critical,
 );
 $np->add_message($code, "nodes online: $json->{number_of_nodes}");
-
-# Check all the indices and shards
-my $indices_with_issues;
-# Loop over all indexes and then shards to find which is critical
-# FIXME Make the check a >=yellow check
-foreach my $i (keys %{$json->{indices}}) {
-  if ($json->{indices}->{$i}->{status} eq $critical) {
-    foreach my $s (keys %{$json->{indices}->{$i}->{shards}}) {
-      if ($json->{indices}->{$i}->{shards}->{$s}->{status} eq $critical) {
-        push @{$indices_with_issues->{$i}}, $s;
-      }
-    }
-  }
-}
-
-# Create an joined error string for all indexes and shards
-if ($indices_with_issues) {
-  my @indices_error_string;
-  foreach my $i (keys %$indices_with_issues) {
-    push @indices_error_string, "index $i shard(s) ".pretty_join($indices_with_issues->{$i});
-  }
-  check_status($critical, join(", ", @indices_error_string));
-}
 
 ($code, my $message) = $np->check_messages(join => ", ");
 $np->nagios_exit($code, $message);
