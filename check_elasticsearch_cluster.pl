@@ -41,51 +41,66 @@ my $np = Nagios::Plugin->new(
   shortname => "#",
   usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<critical cluster status>]",
   timeout => 10,
+  extra => qq(
+See <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT> for
+information on how to use thresholds.
+
+The STATUS label can have three values:
+* green - All primary and replica shards are allocated. Your cluster is 100%
+operational.
+* yellow - All primary shards are allocated, but at least one replica is
+missing. No data is missing, so search results will still be complete. However,
+your high availability is compromised to some degree. If more shards disappear,
+you might lose data. Think of yellow as a warning that should prompt
+investigation.
+* red - At least one primary shard (and all of its replicas) are missing. This
+means that you are missing data: searches will return partial results, and
+indexing into that shard will return an exception.
+
+The defaults has been been taken from
+<https://www.elastic.co/guide/en/elasticsearch/guide/current/_cluster_health.html>
+),
 );
 
 $np->add_arg(
-  spec => 'critical=s',
-  help => "--critical\n   Which cluster/index/shard status that is critical. (default %s)",
-  default => "red",
+  spec => 'cluster-status',
+  help => "--cluster-status\n   Check the status of the cluster.",
 );
 
 $np->add_arg(
-  spec => 'nodes-critical=s',
-  help => "--nodes-critical\n   How many nodes which must be online, uses the Nagios threshhold format.
-   See <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT>. (default %s)",
-  default => '@0',
+  spec => 'warning|w=s',
+  help => [
+    'Set the warning threshold in INTEGER (applies to nodes-online)',
+    'Set the warning threshold in STATUS (applies to cluster-status and index-status)',
+  ],
+  label => [ 'INTEGER', 'STATUS' ],
+);
+
+$np->add_arg(
+  spec => 'critical|c=s',
+  help => [
+    'Set the critical threshold in INTEGER (applies to nodes-online)',
+    'Set the critical threshold in STATUS (applies to cluster-status and index-status)',
+  ],
+  label => [ 'INTEGER', 'STATUS' ],
 );
 
 $np->add_arg(
   spec => 'url=s',
-  help => "--url\n   URL to your Elasticsearch instance. (default %s)",
+  help => "--url\n   URL to your Elasticsearch instance. (default: %s)",
   default => 'http://localhost:9200',
 );
 
 $np->getopts;
-
-my $code;
-my $json;
-my $ua = LWP::UserAgent->new;
-# NRPE timeout is 10 seconds, give us 1 second to run
-$ua->timeout($np->opts->timeout-1);
-# Time out 1 second before LWP times out.
-my $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
-my $resp = $ua->get($url);
-
-if (!$resp->is_success) {
-  $np->nagios_exit(CRITICAL, $resp->status_line);
-}
-$json = $resp->decoded_content;
 
 my %ES_STATUS = (
   "red" => 1,
   "yellow" => 2,
   "green" => 3,
 );
-
-my $ES_STATUS_CRITICAL = $np->opts->critical;
-my $ES_NODES_ERROR = $np->opts->get('nodes-critical');
+my ($warning, $critical) = ($np->opts->warning, $np->opts->critical);
+my $code;
+my $json;
 
 # Turns an array into "first, second & last"
 sub pretty_join($) {
@@ -105,48 +120,71 @@ sub pretty_join($) {
   } @$a);
 }
 
+# Checks the status of "something"
 sub check_status($$) {
   $code = $np->check_threshold(
     check => (ref $_[0] eq "HASH") ? $ES_STATUS{$_[0]->{status}} : $ES_STATUS{$_[0]},
-    warning => "\@$ES_STATUS{$ES_STATUS_CRITICAL}",
-    critical => "\@$ES_STATUS{$ES_STATUS_CRITICAL}",
+    warning => "\@$ES_STATUS{$warning}",
+    critical => "\@$ES_STATUS{$critical}",
   );
   $np->add_message($code, $_[1]);
 }
 
-my $res;
+my $ua = LWP::UserAgent->new;
+# NRPE timeout is 10 seconds, give us 1 second to run
+$ua->timeout($np->opts->timeout-1);
+# Time out 1 second before LWP times out.
+my $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
+my $resp = $ua->get($url);
+
+if (!$resp->is_success) {
+  $np->nagios_exit(CRITICAL, $resp->status_line);
+}
+
+$json = $resp->decoded_content;
+
 # Try to parse the JSON
 eval {
-  $res = decode_json($json);
+  $json = decode_json($json);
 };
 if ($@) {
   $np->nagios_exit(CRITICAL, "JSON was invalid: $@");
 }
 
-# Check the cluster status
-check_status($res, "Cluster $res->{cluster_name} is $res->{status}");
-
 # Check that the cluster query didn't time out
-if (defined $res->{timed_out} && $res->{timed_out}) {
-  $np->add_message(CRITICAL, "Connection to cluster timed out!");
+if (defined $json->{timed_out} && $json->{timed_out}) {
+  $np->nagios_exit(CRITICAL, "Connection to cluster timed out!");
+}
+
+# Check the status of the cluster.
+if ($np->opts->get('cluster-status')) {
+  # Set defaults
+  $warning = $warning || "yellow";
+  $critical = $critical || "red";
+
+  check_status($json, "Cluster $json->{cluster_name} is $json->{status}");
+}
+
+else {
+  exec ($0, "--help");
 }
 
 # Check that we have the number of nodes we prefer online.
 $code = $np->check_threshold(
-  check => $res->{number_of_nodes},
-  warning => "$ES_NODES_ERROR",
-  critical => "$ES_NODES_ERROR",
+  check => $json->{number_of_nodes},
+  warning => $warning,
+  critical => $critical,
 );
-$np->add_message($code, "nodes online: $res->{number_of_nodes}");
+$np->add_message($code, "nodes online: $json->{number_of_nodes}");
 
 # Check all the indices and shards
 my $indices_with_issues;
-# Loop over all indexes and then shards to find which has ES_STATUS_CRITICAL
+# Loop over all indexes and then shards to find which is critical
 # FIXME Make the check a >=yellow check
-foreach my $i (keys %{$res->{indices}}) {
-  if ($res->{indices}->{$i}->{status} eq $ES_STATUS_CRITICAL) {
-    foreach my $s (keys %{$res->{indices}->{$i}->{shards}}) {
-      if ($res->{indices}->{$i}->{shards}->{$s}->{status} eq $ES_STATUS_CRITICAL) {
+foreach my $i (keys %{$json->{indices}}) {
+  if ($json->{indices}->{$i}->{status} eq $critical) {
+    foreach my $s (keys %{$json->{indices}->{$i}->{shards}}) {
+      if ($json->{indices}->{$i}->{shards}->{$s}->{status} eq $critical) {
         push @{$indices_with_issues->{$i}}, $s;
       }
     }
@@ -159,7 +197,7 @@ if ($indices_with_issues) {
   foreach my $i (keys %$indices_with_issues) {
     push @indices_error_string, "index $i shard(s) ".pretty_join($indices_with_issues->{$i});
   }
-  check_status($ES_STATUS_CRITICAL, join(", ", @indices_error_string));
+  check_status($critical, join(", ", @indices_error_string));
 }
 
 ($code, my $message) = $np->check_messages(join => ", ");
