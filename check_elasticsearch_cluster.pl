@@ -221,16 +221,16 @@ if ($np->opts->get('cluster-status')) {
 # Check the status of the cluster.
 elsif ($np->opts->get('index-status')) {
   # Set defaults
-  $warning = $warning || "yellow";
-  $critical = $critical || "red";
+  $warning = $warning || '@yellow';
+  $critical = $critical || '@red';
 
   check_each($json->{indices},
     sub {
       my ($f) = @_;
       return $ES_STATUS{$f->{status}};
     },
-    $ES_STATUS{$warning},
-    $ES_STATUS{$critical},
+    to_threshold($warning, $ES_STATUS{clean_extra_chars($warning)}),
+    to_threshold($critical, $ES_STATUS{clean_extra_chars($critical)}),
     "Indexes with issues: "
   );
 }
