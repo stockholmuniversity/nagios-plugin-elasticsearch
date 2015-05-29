@@ -171,6 +171,18 @@ sub check_each($$$$$) {
   }
 }
 
+sub clean_extra_chars($) {
+  my ($ret) = @_;
+  $ret =~ s/[^\d\w]//g;
+  return $ret;
+}
+
+sub to_threshold($$) {
+  my ($ret, $original) = @_;
+  $ret =~ s/[\d\w]+%?/$original/;
+  return $ret;
+}
+
 my $ua = LWP::UserAgent->new;
 # NRPE timeout is 10 seconds, give us 1 second to run
 $ua->timeout($np->opts->timeout-1);

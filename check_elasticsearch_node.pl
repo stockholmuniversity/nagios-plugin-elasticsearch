@@ -101,7 +101,7 @@ $np->getopts;
 
 sub clean_extra_chars($) {
   my ($ret) = @_;
-  $ret =~ s/[^\d]//g;
+  $ret =~ s/[^\d\w]//g;
   return $ret;
 }
 
@@ -119,7 +119,7 @@ sub remove_unit($) {
 
 sub to_threshold($$) {
   my ($ret, $original) = @_;
-  $ret =~ s/\d+%?/$original/;
+  $ret =~ s/[\d\w]+%?/$original/;
   return $ret;
 }
 
