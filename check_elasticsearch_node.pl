@@ -111,12 +111,6 @@ sub convert_to_decimal($) {
   return $ret;
 }
 
-sub remove_unit($) {
-  my ($ret) = @_;
-  $ret =~ s/[gm]?b$//;
-  return $ret;
-}
-
 sub to_threshold($$) {
   my ($ret, $original) = @_;
   $ret =~ s/[\d\w]+%?/$original/;
