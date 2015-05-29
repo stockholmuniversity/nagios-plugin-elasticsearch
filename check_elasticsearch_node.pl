@@ -310,20 +310,17 @@ elsif ($np->opts->get('breakers-size')) {
 
   check_each($breakers, sub {
       my ($f) = @_;
-      my $estimated_size = $f->{estimated_size};
-      $estimated_size = remove_unit($estimated_size);
+      my $estimated_size = $f->{estimated_size_in_bytes};
       return $estimated_size;
     },
     sub {
       my ($f) = @_;
-      my $limit_size = $f->{limit_size};
-      $limit_size = remove_unit($limit_size);
+      my $limit_size = $f->{limit_size_in_bytes};
       return to_threshold($warning, ($limit_size*convert_to_decimal(clean_extra_chars($warning))));
     },
     sub {
       my ($f) = @_;
-      my $limit_size = $f->{limit_size};
-      $limit_size = remove_unit($limit_size);
+      my $limit_size = $f->{limit_size_in_bytes};
       return to_threshold($critical, ($limit_size*convert_to_decimal(clean_extra_chars($critical))));
     },
     "Breakers over memory limit: "
