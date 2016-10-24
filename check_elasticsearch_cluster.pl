@@ -99,6 +99,16 @@ $np->add_arg(
   default => 'http://localhost:9200',
 );
 
+$np->add_arg(spec => 'username|user|u=s',
+    help => "Username for authentication",
+    default => "",
+);
+
+$np->add_arg(spec => 'password|p=s',
+    help => "Password for authentication",
+    default => ""
+);
+
 $np->getopts;
 
 my %ES_STATUS = (
@@ -188,7 +198,15 @@ my $ua = LWP::UserAgent->new;
 $ua->timeout($np->opts->timeout-1);
 # Time out 1 second before LWP times out.
 my $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
-my $resp = $ua->get($url);
+
+my $req = HTTP::Request->new(GET => $url);
+
+# Username and Password are defined for basic auth
+if ($np->opts->username and $np->opts->password) {
+  $req->authorization_basic($np->opts->username, $np->opts->password); 
+}
+
+my $resp = $ua->request($req);
 
 if (!$resp->is_success) {
   $np->nagios_exit(CRITICAL, $resp->status_line);

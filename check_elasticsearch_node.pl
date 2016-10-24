@@ -97,6 +97,16 @@ $np->add_arg(
   default => 'http://localhost:9200',
 );
 
+$np->add_arg(spec => 'username|user|u=s',
+    help => "Username for authentication",
+    default => "",
+);
+
+$np->add_arg(spec => 'password|p=s',
+    help => "Password for authentication",
+    default => ""
+);
+
 $np->getopts;
 
 sub clean_extra_chars($) {
@@ -123,7 +133,15 @@ sub get_json($) {
   # NRPE timeout is 10 seconds, give us 1 second to run
   $ua->timeout($np->opts->timeout-1);
   $url = $np->opts->url.$url;
-  my $response = $ua->get($url);
+
+  my $req = HTTP::Request->new(GET => $url);
+
+  # Username and Password are defined for basic auth
+  if ($np->opts->username and $np->opts->password) {
+    $req->authorization_basic($np->opts->username, $np->opts->password); 
+  }
+
+  my $response = $ua->request($req);
 
   if (!$response->is_success) {
     $np->nagios_exit(CRITICAL, $response->status_line);
