@@ -183,7 +183,7 @@ sub check_each($$$$$) {
   my %statuses;
   my ($what, $where, $warning, $critical, $message) = @_;
   # Run check_threshold on everything
-  foreach my $k (keys $what) {
+  foreach my $k (keys %$what) {
     my $current_key = $where->($what->{$k});
     if (ref $warning eq "CODE") {
       $warning = $warning->($what->{$k});
@@ -224,10 +224,10 @@ if ($np->opts->get('open-fds')) {
   $critical = clean_extra_chars($critical);
   $critical = convert_to_decimal($critical);
 
-  my $open_fds = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{open_file_descriptors};
+  my $open_fds = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{process}->{open_file_descriptors};
   # Get the default number of open file descriptors
   $json = get_json("/_nodes/_local?pretty");
-  my $open_fds_max = $json->{nodes}->{(keys $json->{nodes})[0]}->{process}->{max_file_descriptors};
+  my $open_fds_max = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{process}->{max_file_descriptors};
 
   $code = $np->check_threshold(
     check => $open_fds,
@@ -252,7 +252,7 @@ elsif ($np->opts->get('jvm-heap-usage')) {
   $warning = clean_extra_chars($warning);
   $critical = clean_extra_chars($critical);
 
-  my $jvm_heap_used = $json->{nodes}->{(keys $json->{nodes})[0]}->{jvm}->{mem}->{heap_used_percent};
+  my $jvm_heap_used = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{jvm}->{mem}->{heap_used_percent};
 
   $code = $np->check_threshold(
     check => $jvm_heap_used,
@@ -273,7 +273,7 @@ elsif ($np->opts->get('thread-pool-rejected')) {
   $warning = $warning || '@1:';
   $critical = $critical || '@5:';
 
-  my $thread_pool = $json->{nodes}->{(keys $json->{nodes})[0]}->{thread_pool};
+  my $thread_pool = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{thread_pool};
 
   check_each($thread_pool, sub {
       my ($f) = @_;
@@ -296,7 +296,7 @@ elsif ($np->opts->get('breakers-tripped')) {
   $warning = $warning || '@1:';
   $critical = $critical || '@5:';
 
-  my $breakers = $json->{nodes}->{(keys $json->{nodes})[0]}->{breakers};
+  my $breakers = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{breakers};
 
   check_each($breakers, sub {
       my ($f) = @_;
@@ -318,7 +318,7 @@ elsif ($np->opts->get('breakers-size')) {
   $warning = $warning || '@75%:';
   $critical = $critical || '@85%:';
 
-  my $breakers = $json->{nodes}->{(keys $json->{nodes})[0]}->{breakers};
+  my $breakers = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{breakers};
 
   check_each($breakers, sub {
       my ($f) = @_;
