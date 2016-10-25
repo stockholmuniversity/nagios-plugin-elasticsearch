@@ -154,7 +154,7 @@ sub check_each($$$$$) {
   my %statuses;
   my ($what, $where, $warning, $critical, $message) = @_;
   # Run check_threshold on everything
-  foreach my $k (keys $what) {
+  foreach my $k (keys %$what) {
     my $current_key = $where->($what->{$k});
     if (ref $warning eq "CODE") {
       $warning = $warning->($what->{$k});
