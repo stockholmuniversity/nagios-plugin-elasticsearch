@@ -37,7 +37,7 @@ use LWP::UserAgent;
 my $np = Nagios::Plugin->new(
   shortname => "#",
   usage => "Usage: %s [-v|--verbose] [-t <timeout>] [--critical=<value to emit critical>] [--warning=<value to emit warning>] --one-of-the-checks-below",
-  version => "1.2",
+  version => "1.3.0",
   timeout => 10,
   extra => qq(
 See <https://nagios-plugins.org/doc/guidelines.html#THRESHOLDFORMAT> for
