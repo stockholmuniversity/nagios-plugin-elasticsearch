@@ -60,7 +60,8 @@ $np->add_arg(
 # TODO Add thread-pool-queued (%)
 $np->add_arg(
   spec => 'thread-pool-rejected',
-  help => "--thread-pool-rejected\n   Check how many rejected work units the thread pools have.",
+  help => '--thread-pool-rejected\n   Check how many rejected work units the thread pools have.
+   You can also set a per thread-pool threshold by prefixing the threshold with "<thread-pool-name>;", e.g: --critical "search;@100000:"',
 );
 
 $np->add_arg(
@@ -187,10 +188,10 @@ sub check_each($$$$$) {
     my $current_key = $where->($what->{$k});
     my ($warn, $crit);
     if (ref $warning eq "CODE") {
-      $warn = $warning->($what->{$k});
+      $warn = $warning->($what->{$k}, $k);
     }
     if (ref $critical eq "CODE") {
-      $crit = $critical->($what->{$k});
+      $crit = $critical->($what->{$k}, $k);
     }
     $warn ||= $warning;
     $crit ||= $critical;
@@ -211,6 +212,24 @@ sub check_each($$$$$) {
       $np->add_message($code, $message.pretty_join($statuses{$code}));
     }
   }
+}
+
+sub parse_thresholds {
+  my %opt = @_;
+  my @thresholds = split(/,/, $opt{threshold});
+  @thresholds = map {
+    if (/;/) {
+      my ($k, $v) = split(/;/, $_);
+      $opt{thresholds}{$k} = $v;
+      undef;
+    }
+    else {
+      $_;
+    }
+  } @thresholds;
+  @thresholds = grep { defined } @thresholds;
+  my $threshold = join('', @thresholds);
+  return $threshold;
 }
 
 my ($warning, $critical) = ($np->opts->warning, $np->opts->critical);
@@ -273,8 +292,22 @@ elsif ($np->opts->get('thread-pool-rejected')) {
   # rejected[…]. This is often a sign that your cluster is starting to
   # bottleneck on some resources, since a full queue means your node/cluster is
   # processing at maximum speed but unable to keep up with the influx of work.
-  $warning = $warning || '@1:';
-  $critical = $critical || '@5:';
+  my (%warnings, %criticals);
+
+  # Set default thresholds if none are set.
+  my $default_warning = '@1:';
+  my $default_critical = '@5:';
+  $warning ||= $default_warning;
+  $critical ||= $default_critical;
+
+  # Parse specific thresholds for certain keys
+  $warning = parse_thresholds(thresholds => \%warnings, threshold => $warning);
+  $critical = parse_thresholds(thresholds => \%criticals, threshold => $critical);
+
+  # Set defaults thresholds *again* if only specific thresholds were supplied
+  # i.e: --warning 'search;@10:'
+  $warning ||= $default_warning;
+  $critical ||= $default_critical;
 
   my $thread_pool = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{thread_pool};
 
@@ -282,8 +315,14 @@ elsif ($np->opts->get('thread-pool-rejected')) {
       my ($f) = @_;
       return $f->{rejected};
     },
-    $warning,
-    $critical,
+    sub {
+      my ($f,$k) = @_;
+      return (defined $warnings{$k} ? $warnings{$k} : $warning);
+    },
+    sub {
+      my ($f,$k) = @_;
+      return (defined $criticals{$k} ? $criticals{$k} : $critical);
+    },
     "Thread pools with rejected threads: "
   );
 }
