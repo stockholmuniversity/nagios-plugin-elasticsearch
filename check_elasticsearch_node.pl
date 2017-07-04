@@ -185,17 +185,20 @@ sub check_each($$$$$) {
   # Run check_threshold on everything
   foreach my $k (keys %$what) {
     my $current_key = $where->($what->{$k});
+    my ($warn, $crit);
     if (ref $warning eq "CODE") {
-      $warning = $warning->($what->{$k});
+      $warn = $warning->($what->{$k});
     }
     if (ref $critical eq "CODE") {
-      $critical = $critical->($what->{$k});
+      $crit = $critical->($what->{$k});
     }
+    $warn ||= $warning;
+    $crit ||= $critical;
 
     my $code = $np->check_threshold(
       check => $current_key,
-      warning => $warning,
-      critical => $critical,
+      warning => $warn,
+      critical => $crit,
     );
 
     # and put in in a hash where the status is the key and the value an array
