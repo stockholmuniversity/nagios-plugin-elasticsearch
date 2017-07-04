@@ -138,7 +138,7 @@ sub get_json($) {
 
   # Username and Password are defined for basic auth
   if ($np->opts->username and $np->opts->password) {
-    $req->authorization_basic($np->opts->username, $np->opts->password); 
+    $req->authorization_basic($np->opts->username, $np->opts->password);
   }
 
   my $response = $ua->request($req);
