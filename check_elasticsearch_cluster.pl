@@ -148,6 +148,17 @@ sub check_status($$) {
   $np->add_message($code, $_[1]);
 }
 
+sub get_threshold_value {
+  my ($thresh, $value, $key) = @_;
+
+  if (ref $thresh eq 'CODE') {
+    return $thresh->($value, $key);
+  }
+  else {
+    return $thresh;
+  }
+}
+
 # Check a data structure with check_threshold.
 # TODO Make sure it works recursively
 sub check_each($$$$$) {
@@ -155,19 +166,10 @@ sub check_each($$$$$) {
   my ($what, $where, $warning, $critical, $message) = @_;
   # Run check_threshold on everything
   foreach my $k (keys %$what) {
-    my ($warn, $crit);
     my $current_key = $where->($what->{$k});
 
-    if (ref $warning eq "CODE") {
-      $warn = $warning->($what->{$k});
-    } else {
-      $warn = $warning;
-    }
-    if (ref $critical eq "CODE") {
-      $crit = $critical->($what->{$k});
-    } else {
-      $crit = $critical;
-    }
+    my $warn = get_threshold_value($warning, $what->{$k}, $k);
+    my $crit = get_threshold_value($critical, $what->{$k}, $k);
 
     my $code = $np->check_threshold(
       check => $current_key,
