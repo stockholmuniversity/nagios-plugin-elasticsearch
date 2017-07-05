@@ -178,6 +178,14 @@ sub pretty_join($) {
   } @$a);
 }
 
+sub get_threshold_value {
+    return $thresh->($value, $key);
+  }
+  else {
+    return $thresh;
+  }
+}
+
 # Check a data structure with check_threshold.
 # TODO Make sure it works recursively
 sub check_each($$$$$) {
@@ -186,18 +194,9 @@ sub check_each($$$$$) {
   # Run check_threshold on everything
   foreach my $k (keys %$what) {
     my $current_key = $where->($what->{$k});
-    my ($warn, $crit);
 
-    if (ref $warning eq "CODE") {
-      $warn = $warning->($what->{$k}, $k);
-    } else {
-      $warn = $warning;
-    }
-    if (ref $critical eq "CODE") {
-      $crit = $critical->($what->{$k}, $k);
-    } else {
-      $crit = $critical;
-    }
+    my $warn = get_threshold_value($warning, $what->{$k}, $k);
+    my $crit = get_threshold_value($critical, $what->{$k}, $k);
 
     my $code = $np->check_threshold(
       check => $current_key,
