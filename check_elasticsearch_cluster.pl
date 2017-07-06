@@ -211,7 +211,7 @@ my $req = HTTP::Request->new(GET => $url);
 
 # Username and Password are defined for basic auth
 if ($np->opts->username and $np->opts->password) {
-  $req->authorization_basic($np->opts->username, $np->opts->password); 
+  $req->authorization_basic($np->opts->username, $np->opts->password);
 }
 
 my $resp = $ua->request($req);
