@@ -160,22 +160,15 @@ sub get_json($) {
   return $result;
 }
 
-# Turns an array into "first, second & last"
-sub pretty_join($) {
-  my ($a) = @_;
-  join("", map {
-    if ($_ eq @$a[@$a-1]) {
-      $_;
-    }
-    else {
-      if ($_ eq @$a[@$a-2]) {
-        $_.' & ';
-      }
-      else {
-        $_.', ';
-      }
-    }
-  } @$a);
+# Turns an array into "first, second, third & last"
+sub pretty_join {
+  my $a = shift;
+
+  my @words = @$a;
+  my $string = join (', ', @words[0..$#words-1]);
+  $string = $string.' & '.$words[$#words];
+
+  return $string;
 }
 
 sub get_threshold_value {
