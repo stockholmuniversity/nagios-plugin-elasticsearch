@@ -121,21 +121,10 @@ my $code;
 my $json;
 
 # Turns an array into "first, second & last"
-sub pretty_join($) {
+sub pretty_join {
   my ($a) = @_;
-  join("", map {
-    if ($_ eq @$a[@$a-1]) {
-      $_;
-    }
-    else {
-      if ($_ eq @$a[@$a-2]) {
-        $_.' & ';
-      }
-      else {
-        $_.', ';
-      }
-    }
-  } @$a);
+  return join(', ', @{$a}[0..$#{$a}-1]).
+  ' & '.@{$a}[$#{$a}];
 }
 
 # Checks the status of "something"
