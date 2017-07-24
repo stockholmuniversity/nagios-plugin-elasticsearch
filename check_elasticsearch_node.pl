@@ -163,6 +163,8 @@ sub get_json($) {
 # Turns an array into "first, second & last"
 sub pretty_join {
   my ($a) = @_;
+  return @{$a}[0] if $#{$a} == 0;
+  return "" if $#{$a} == -1;
   return join(', ', @{$a}[0..$#{$a}-1]).
   ' & '.@{$a}[$#{$a}];
 }
