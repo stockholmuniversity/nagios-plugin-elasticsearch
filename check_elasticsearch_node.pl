@@ -140,7 +140,10 @@ sub to_threshold($$) {
 
 sub get_json($) {
   my ($url) = @_;
-  my $ua = LWP::UserAgent->new;
+  my $ua = LWP::UserAgent->new(
+    ssl_opts => { verify_hostname => 0 },
+    protocols_allowed => ['https','http'],
+  );
   # NRPE timeout is 10 seconds, give us 1 second to run
   $ua->timeout($np->opts->timeout-1);
   $url = $np->opts->url.$url;
