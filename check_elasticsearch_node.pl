@@ -253,8 +253,6 @@ if ($np->opts->get('open-fds')) {
   $critical = convert_to_decimal($critical);
 
   my $open_fds = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{process}->{open_file_descriptors};
-  # Get the default number of open file descriptors
-  $json = get_json("/_nodes/_local?pretty");
   my $open_fds_max = $json->{nodes}->{(keys %{$json->{nodes}})[0]}->{process}->{max_file_descriptors};
 
   $code = $np->check_threshold(
