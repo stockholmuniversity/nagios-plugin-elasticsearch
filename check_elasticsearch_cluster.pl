@@ -86,6 +86,11 @@ $np->add_arg(
 );
 
 $np->add_arg(
+  spec => 'split-brain',
+  help => "--split-brain\n   Check if the cluster has a split-brain.",
+);
+
+$np->add_arg(
   spec => 'warning|w=s',
   help => [
     'Set the warning threshold in INTEGER (applies to nodes-online)',
@@ -202,11 +207,31 @@ sub to_threshold($$) {
   return $ret;
 }
 
+sub decode_and_check_json {
+  my %opt = @_;
+  # Try to parse the JSON
+  my $json;
+  eval {
+    $json = decode_json($opt{json});
+  };
+
+  if ($@) {
+    $opt{np}->nagios_exit(CRITICAL, "JSON was invalid: $@");
+  }
+  return $json;
+}
+
 my $ua = LWP::UserAgent->new;
 # NRPE timeout is 10 seconds, give us 1 second to run
 $ua->timeout($np->opts->timeout-1);
-# Time out 1 second before LWP times out.
-my $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
+my $url;
+if ($np->opts->get('split-brain')) {
+  $url = $np->opts->url."/_cluster/state/master_node,nodes?pretty";
+}
+else {
+  # Time out 1 second before LWP times out.
+  $url = $np->opts->url."/_cluster/health?level=shards&timeout=".($np->opts->timeout-2)."s&pretty";
+}
 
 my $req = HTTP::Request->new(GET => $url);
 
@@ -223,13 +248,7 @@ if (!$resp->is_success) {
 
 $json = $resp->decoded_content;
 
-# Try to parse the JSON
-eval {
-  $json = decode_json($json);
-};
-if ($@) {
-  $np->nagios_exit(CRITICAL, "JSON was invalid: $@");
-}
+$json = decode_and_check_json(json => $json, np => $np);
 
 # Check that the cluster query didn't time out
 if (defined $json->{timed_out} && $json->{timed_out}) {
@@ -274,6 +293,39 @@ elsif ($np->opts->get('nodes-online')) {
     critical => $critical,
   );
   $np->add_message($code, "Nodes online: $json->{number_of_nodes}");
+}
+
+# Check for split-brain of the cluster
+elsif ($np->opts->get('split-brain')) {
+  my $master_node = $json->{master_node};
+  $req->uri->query($req->uri->query."&local=true");
+  my $header_host = $req->uri->host;
+
+  for my $node (keys %{$json->{nodes}}) {
+    my ($ip) = split(/:/, $json->{nodes}->{$node}->{transport_address});
+
+    my $uri = $req->uri;
+    $uri->host($ip);
+    $req->uri($uri);
+    # Let's use the original host as Host header to get "vhost support" since
+    # we connect directly to the IP and as the CN to verify in SSL
+    $req->header(Host => $header_host);
+    $ua->ssl_opts(SSL_verifycn_name => $header_host);
+
+    my $resp = $ua->request($req);
+
+    if (!$resp->is_success) {
+      $np->nagios_exit(CRITICAL, $resp->status_line.($resp->header("client-warning") eq "Internal response" ? " ".join(" ", split(/\n+/, $resp->decoded_content)) : ""));
+    }
+
+    my $node_json = $resp->decoded_content;
+
+    $node_json = decode_and_check_json(json => $node_json, np => $np);
+
+    if ($master_node ne $node_json->{master_node}) {
+      $np->nagios_exit(CRITICAL, "node=$node ip=$ip has splitbrain! It thinks $node_json->{master_node} is master but it's $master_node");
+    }
+  }
 }
 
 else {
