@@ -18,6 +18,7 @@ For more details, see `--help` on respective check.
 * Cluster status
 * Index status
 * Number of nodes online
+* Split brain detection
 
 ### Node
 * Open filedescriptors
